@@ -1,0 +1,9 @@
+{
+  "name": "cryptyx-bypasser",
+  "version": "1.0.0",
+  "description": "Cryptyx Bypasser - Age Forcer & Email Remover",
+  "main": "api/beam.js",
+  "dependencies": {
+    "axios": "^1.21.0"
+  }
+}
