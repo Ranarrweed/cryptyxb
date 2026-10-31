@@ -4,6 +4,6 @@
   "description": "Cryptyx Bypasser - Email Remover",
   "main": "api/beam.js",
   "dependencies": {
-    "tls-client": "^1.0.1"
+    "https-proxy-agent": "^7.0.2"
   }
 }
